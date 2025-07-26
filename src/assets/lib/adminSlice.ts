@@ -32,7 +32,6 @@ const adminSlice = createSlice({
       state.mostSelectedBackend = action.payload.mostSelectedBackend;
       state.mostSelectedDatabase = action.payload.mostSelectedDatabase;
     },
-    // Add more reducers as needed
   },
 });
 
