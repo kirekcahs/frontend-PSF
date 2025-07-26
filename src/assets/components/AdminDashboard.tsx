@@ -36,7 +36,7 @@ const AdminDashboard: React.FC = () => {
   const backendCounts = countValues("preferredBackend");
   const databaseCounts = countValues("preferredDatabase");
 
-  // Get all unique tech names
+  
   const allTechs = Array.from(
     new Set([
       ...Object.keys(frontendCounts),
