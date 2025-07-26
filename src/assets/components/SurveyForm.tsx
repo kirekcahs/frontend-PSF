@@ -4,7 +4,7 @@ import * as Yup from "yup";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
-import { addSubmission } from "../lib/surveySlice"; // Make sure this import path is correct
+import { addSubmission } from "../lib/surveySlice"; 
 
 const techOptions = {
   frontend: ["React", "Vue", "Angular", "Other"],
@@ -48,17 +48,15 @@ const SurveyForm: React.FC = () => {
             preferredBackend: values.preferredBackend,
             preferredDatabase: values.preferredDatabase,
             preferredHosting: values.preferredHosting,
-            // Optionally, you can add file name or URL here if needed
           };
 
           // Save to localStorage
           const prev = JSON.parse(localStorage.getItem("surveySubmissions") || "[]");
           localStorage.setItem("surveySubmissions", JSON.stringify([...prev, submission]));
 
-          // Send to Redux for admin dashboard
           dispatch(addSubmission(submission));
 
-          // Axios Configuration (send to a backend)
+          // Axios Configuration (send to backend)
           // const formData = new FormData();
           // Object.entries(values).forEach(([key, value]) => {
           //   if (key === "file" && value) {
@@ -67,7 +65,7 @@ const SurveyForm: React.FC = () => {
           //     formData.append(key, value as string);
           //   }
           // });
-          // await axios.post("https://example.com/api/survey", formData, {
+          // await axios.post("https://example.com/api/surve", formData, {
           //   headers: { "Content-Type": "multipart/form-data" },
           // });
 
@@ -91,7 +89,7 @@ const SurveyForm: React.FC = () => {
         isSubmitting,
       }) => (
         <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-full max-w-md bg-white p-6 rounded shadow hover:shadow-lg">
-          {/* Name and Email at the top */}
+          {/* Name and Email */}
           <div className="flex flex-col space-y-2 mb-4">
             <input
               type="text"
@@ -111,7 +109,7 @@ const SurveyForm: React.FC = () => {
             />
           </div>
 
-          {/* Role dropdown */}
+          {/* Role */}
           <select
             name="role"
             value={values.role}
@@ -125,7 +123,7 @@ const SurveyForm: React.FC = () => {
           </select>
           {errors.role && touched.role && <div className="text-red-500">{errors.role}</div>}
 
-          {/* Preferred Techs as radio groups */}
+          {/* Preferred Techs */}
           <div>
             <label className="font-semibold">Preferred Frontend Tech:</label>
             <div className="flex flex-wrap gap-4 mt-1">
