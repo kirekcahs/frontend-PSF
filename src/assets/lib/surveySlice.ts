@@ -8,7 +8,7 @@ export interface SurveySubmission {
   preferredBackend: string;
   preferredDatabase: string;
   preferredHosting: string;
-  fileUrl?: string; // Optional, if you want to store uploaded file URLs
+  fileUrl?: string; 
 }
 
 interface SurveyState {
