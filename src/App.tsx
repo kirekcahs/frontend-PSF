@@ -9,9 +9,8 @@ import "react-toastify/dist/ReactToastify.css";
 
 function App () {
   const { isAuthenticated, logoutUser, user } = useAuth();
-
-  // Redirect logic: show dashboard if admin, else show survey form if authenticated, else show login
-  const isAdmin = user && user.name === "admin"; // Adjust as needed for your admin logic
+  
+  const isAdmin = user && user.name === "admin";
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
