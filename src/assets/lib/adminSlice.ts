@@ -5,7 +5,6 @@ interface AdminState {
   mostSelectedFrontend: string;
   mostSelectedBackend: string;
   mostSelectedDatabase: string;
-  // Add more fields as needed for dashboard stats
 }
 
 const initialState: AdminState = {
