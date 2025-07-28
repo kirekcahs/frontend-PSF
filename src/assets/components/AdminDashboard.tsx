@@ -1,82 +1,67 @@
-import React from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../store/store";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useEffect, useMemo } from 'react';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { fetchSubmissions} from '../../assets/lib/surveySlice';
+import type { RootState } from '../../store/store';
+import { toast } from 'react-toastify';
+import StatCard from './StatCard';
+import TechChart from './TechChart';
 
-type Submission = {
-  preferredFrontend: string;
-  preferredBackend: string;
-  preferredDatabase: string;
-};
+type ChartableTech = 'preferredFrontend' | 'preferredBackend' | 'preferredDatabase' | 'preferredHosting';
 
-const AdminDashboard: React.FC = () => {
-  const submissions = useSelector((state: RootState) => state.survey.submissions as Submission[]);
+// AdminDashboard component to display survey statistics and charts
+const AdminDashboard: React.FC = () => { 
+  const dispatch = useAppDispatch();
+  const { submissions, status, error } = useAppSelector((state: RootState) => state.survey);
 
-  const totalSubmissions = submissions.length;
+ // Fetch submissions when the component mounts or when the status changes 
+  useEffect(() => {
+    if (status === 'idle') {
+      dispatch(fetchSubmissions());
+    }
+  }, [status, dispatch]);
 
-  const countValues = (field: keyof Submission): Record<string, number> => {
-    const counts: Record<string, number> = {};
-    submissions.forEach((submission) => {
-      const value = submission[field];
-      if (value) counts[value] = (counts[value] || 0) + 1;
-    });
-    return counts;
-  };
+  useEffect(() => {
+    if (status === 'failed' && error) {
+      toast.error(error);
+    }
+  }, [status, error]);
 
-  const frontendCounts = countValues("preferredFrontend");
-  const backendCounts = countValues("preferredBackend");
-  const databaseCounts = countValues("preferredDatabase");
-
-  
-  const allTechs = Array.from(
-    new Set([
-      ...Object.keys(frontendCounts),
-      ...Object.keys(backendCounts),
-      ...Object.keys(databaseCounts),
-    ])
-  );
-
-  // Merge into chart data
-  const chartData = allTechs.map((tech) => ({
-    tech,
-    Frontend: frontendCounts[tech] || 0,
-    Backend: backendCounts[tech] || 0,
-    Database: databaseCounts[tech] || 0,
-  }));
-
+  // Prepare data for charts
+  // This function counts the occurrences of each technology in the submissions
+  const chartData = useMemo(() => {
+    const countTech = (field: ChartableTech) => {
+      const counts = submissions.reduce((acc, submission) => {
+        const tech = submission[field];
+        if (tech) acc[tech] = (acc[tech] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    };
+// Return the top 3 technologies for each category
+    return {
+      frontend: countTech('preferredFrontend'),
+      backend: countTech('preferredBackend'),
+      database: countTech('preferredDatabase'),
+    };
+  }, [submissions]);
+// Render the AdminDashboard component
+  if (status === 'loading') return <p className="text-center font-semibold text-lg">Loading Dashboard Data...</p>;
+  if (status === 'failed') return <p className="text-center text-red-500 font-semibold text-lg">Error: Could not load dashboard data.</p>;
+// If there are no submissions, display a message
   return (
-    <div className="w-full max-w-4xl bg-white p-6 rounded shadow shadow-lg">
-      <h2 className="text-xl font-bold mb-4">Admin Dashboard</h2>
-      <div className="mb-4">
-        <p><strong>Total Submissions:</strong> {totalSubmissions}</p>
+    <div className="w-full space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard title="Total Submissions" value={submissions.length} />
+        <StatCard title="Top Frontend Tech" value={chartData.frontend[0]?.name || 'N/A'} />
+        <StatCard title="Top Backend Tech" value={chartData.backend[0]?.name || 'N/A'} />
       </div>
 
-      <div className="mb-4">
-        <h3 className="font-semibold mb-2">Tech Stack Chart</h3>
-        <div className="w-full h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tech" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="Frontend" fill="#8884d8" />
-              <Bar dataKey="Backend" fill="#82ca9d" />
-              <Bar dataKey="Database" fill="#ffc658" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TechChart title="Frontend Tech Distribution" data={chartData.frontend} />
+        <TechChart title="Backend Tech Distribution" data={chartData.backend} />
+        <TechChart title="Database Distribution" data={chartData.database} />
       </div>
+
     </div>
   );
 };
