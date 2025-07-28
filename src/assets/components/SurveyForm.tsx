@@ -1,233 +1,174 @@
 import React, { useRef } from "react";
-import { Formik } from "formik";
+import { Formik, Field } from "formik"; // We'll use the 'Field' component for simplicity
 import * as Yup from "yup";
-import axios from "axios";
 import { toast } from "react-toastify";
-import { useDispatch } from "react-redux";
-import { addSubmission } from "../lib/surveySlice"; 
+import axios from 'axios';
 
-const techOptions = {
-  frontend: ["React", "Vue", "Angular", "Other"],
-  backend: ["Node.js", "Python", "Go", "Other"],
-  database: ["MongoDB", "PostgreSQL", "CosmosDB", "Other"],
-  hosting: ["Vercel", "Azure", "Netlify", "Other"],
-};
+// Reusable Radio Group Component for Tech Selection 
+interface RadioGroupProps {
+  label: string;
+  name: string;
+  options: string[];
+  otherFieldName: string;
+  selectedValue: string;
+  error?: string;
+  touched?: boolean;
+}
 
-const SurveyForm: React.FC = () => {
+
+const TechRadioGroup: React.FC<RadioGroupProps> = ({ label, name, options, otherFieldName, selectedValue, error, touched }) => ( // Reusable component for tech selection with "Other" option
+  // This component renders a group of radio buttons for tech selection
+  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+    <label className="font-semibold text-gray-800">{label}:</label>
+    <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2">
+      {options.map((tech) => (
+        <label key={tech} className="flex items-center space-x-2">
+          <Field type="radio" name={name} value={tech} className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" />
+          <span className="text-gray-700">{tech}</span>
+        </label>
+      ))}
+    </div>
+    {/*Conditional Text Input for "Other" */}
+    {selectedValue === 'Other' && (
+      <Field
+        type="text"
+        name={otherFieldName}
+        placeholder="Please specify"
+        className="mt-3 p-2 border border-gray-300 rounded w-full"
+      />
+    )}
+    {error && touched && <div className="text-red-500 text-sm mt-1">{error}</div>}
+  </div>
+);
+
+
+const SurveyForm: React.FC = () => { // Main Survey Form Component
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const dispatch = useDispatch();
 
   return (
     <Formik
       initialValues={{
-        name: "",
-        email: "",
-        role: "",
-        preferredFrontend: "",
-        preferredBackend: "",
-        preferredDatabase: "",
-        preferredHosting: "",
+        name: "", email: "", role: "",
+        preferredFrontend: "", preferredBackend: "", preferredDatabase: "", preferredHosting: "",
+        preferredFrontendOther: "", preferredBackendOther: "", preferredDatabaseOther: "", preferredHostingOther: "",
         file: null as File | null,
       }}
       validationSchema={Yup.object({
         name: Yup.string(),
         email: Yup.string().email("Invalid email"),
         role: Yup.string().required("Role is required"),
-        preferredFrontend: Yup.string().required("Frontend tech is required"),
-        preferredBackend: Yup.string().required("Backend tech is required"),
-        preferredDatabase: Yup.string().required("Database is required"),
-        preferredHosting: Yup.string().required("Hosting is required"),
+
+        // Validation logic for conditional fields
+        preferredFrontend: Yup.string().when('role', {
+          is: (role: string) => role === 'frontend' || role === 'fullstack',
+          then: (schema) => schema.required('Frontend tech is required'),
+          otherwise: (schema) => schema.nullable(),
+        }),
+        preferredBackend: Yup.string().when('role', {
+          is: (role: string) => role === 'backend' || role === 'fullstack',
+          then: (schema) => schema.required('Backend tech is required'),
+          otherwise: (schema) => schema.nullable(),
+        }),
+        preferredDatabase: Yup.string().when('role', {
+          is: (role: string) => role === 'backend' || role === 'fullstack',
+          then: (schema) => schema.required('Database is required'),
+          otherwise: (schema) => schema.nullable(),
+        }),
+        preferredHosting: Yup.string().when('role', {
+          is: (role: string) => role === 'frontend' || role === 'fullstack',
+          then: (schema) => schema.required('Hosting is required'),
+          otherwise: (schema) => schema.nullable(),
+        }),
       })}
       onSubmit={async (values, { setSubmitting, resetForm }) => {
         try {
-          const submission = {
-            name: values.name,
-            email: values.email,
-            role: values.role,
-            preferredFrontend: values.preferredFrontend,
-            preferredBackend: values.preferredBackend,
-            preferredDatabase: values.preferredDatabase,
-            preferredHosting: values.preferredHosting,
-          };
+            const formData = new FormData();
+            // Append all values from the form to FormData
+            Object.entries(values).forEach(([key, value]) => {
+                if (key === 'file' && value instanceof File) {
+                    formData.append(key, value);
+                } else if (value !== null && value !== undefined) {
+                    formData.append(key, String(value));
+                }
+            });
 
-          // Save to localStorage
-          const prev = JSON.parse(localStorage.getItem("surveySubmissions") || "[]");
-          localStorage.setItem("surveySubmissions", JSON.stringify([...prev, submission]));
+            await axios.post("/api/submit", formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-          dispatch(addSubmission(submission));
-
-          // Axios Configuration (send to backend)
-          // const formData = new FormData();
-          // Object.entries(values).forEach(([key, value]) => {
-          //   if (key === "file" && value) {
-          //     formData.append(key, value as File);
-          //   } else if (key !== "file") {
-          //     formData.append(key, value as string);
-          //   }
-          // });
-          // await axios.post("https://example.com/api/surve", formData, {
-          //   headers: { "Content-Type": "multipart/form-data" },
-          // });
-
-          toast.success("Survey submitted successfully!");
-          resetForm();
-          if (fileInputRef.current) fileInputRef.current.value = "";
+            toast.success("Thank you! Your survey has been submitted.");
+            resetForm();
+            if (fileInputRef.current) fileInputRef.current.value = "";
         } catch (error) {
-          toast.error("Failed to submit survey.");
+          toast.error("An error occurred. Please try again.");
+          console.error("Submission Error:", error);
         } finally {
           setSubmitting(false);
         }
       }}
     >
-      {({
-        handleSubmit,
-        handleChange,
-        setFieldValue,
-        values,
-        errors,
-        touched,
-        isSubmitting,
-      }) => (
-        <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-full max-w-md bg-white p-6 rounded shadow hover:shadow-lg">
+      {/* We pass the 'values' from Formik to watch for changes */}
+      {({ handleSubmit, values, errors, touched, setFieldValue, isSubmitting }) => (
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-6 w-full max-w-lg bg-white p-8 rounded-xl shadow-lg">
           {/* Name and Email */}
-          <div className="flex flex-col space-y-2 mb-4">
-            <input
-              type="text"
-              name="name"
-              placeholder="Name (optional)"
-              value={values.name}
-              onChange={handleChange}
-              className="p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Email (optional)"
-              value={values.email}
-              onChange={handleChange}
-              className="p-2 border border-gray-300 rounded"
-            />
+          <div className="flex flex-col space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 text-center">Developer Tech Survey</h2>
+            <Field type="text" name="name" placeholder="Name (optional)" className="p-3 border border-gray-300 rounded-lg"/>
+            <Field type="email" name="email" placeholder="Email (optional)" className="p-3 border border-gray-300 rounded-lg"/>
           </div>
 
-          {/* Role */}
-          <select
-            name="role"
-            value={values.role}
-            onChange={handleChange}
-            className="p-2 border border-gray-300 rounded"
-          >
-            <option value="">Select Role</option>
-            <option value="frontend">Frontend</option>
-            <option value="fullstack">Fullstack</option>
-            <option value="backend">Backend</option>
-          </select>
-          {errors.role && touched.role && <div className="text-red-500">{errors.role}</div>}
-
-          {/* Preferred Techs */}
+          {/* Role Dropdown */}
           <div>
-            <label className="font-semibold">Preferred Frontend Tech:</label>
-            <div className="flex flex-wrap gap-4 mt-1">
-              {techOptions.frontend.map((tech) => (
-                <label key={tech} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="preferredFrontend"
-                    value={tech}
-                    checked={values.preferredFrontend === tech}
-                    onChange={handleChange}
-                  />
-                  <span>{tech}</span>
-                </label>
-              ))}
-            </div>
-            {errors.preferredFrontend && touched.preferredFrontend && (
-              <div className="text-red-500">{errors.preferredFrontend}</div>
-            )}
+            <label htmlFor="role" className="font-semibold text-gray-800">What is your primary role?</label>
+            <Field as="select" name="role" id="role" className="mt-2 p-3 border border-gray-300 rounded-lg w-full bg-white">
+                <option value="">Select a Role...</option>
+                <option value="frontend">Frontend Developer</option>
+                <option value="backend">Backend Developer</option>
+                <option value="fullstack">Fullstack Developer</option>
+            </Field>
+            {errors.role && touched.role && <div className="text-red-500 text-sm mt-1">{errors.role}</div>}
           </div>
 
+          {/* Show Frontend & Hosting for 'frontend' or 'fullstack' roles */}
+          {(values.role === 'frontend' || values.role === 'fullstack') && (
+            <>
+              <TechRadioGroup
+                label="Preferred Frontend Tech" name="preferredFrontend"
+                options={["React", "Vue", "Angular", "Other"]} otherFieldName="preferredFrontendOther"
+                selectedValue={values.preferredFrontend} error={errors.preferredFrontend} touched={touched.preferredFrontend}
+              />
+              <TechRadioGroup
+                label="Preferred Hosting Platform" name="preferredHosting"
+                options={["Vercel", "Azure", "Netlify", "Other"]} otherFieldName="preferredHostingOther"
+                selectedValue={values.preferredHosting} error={errors.preferredHosting} touched={touched.preferredHosting}
+              />
+            </>
+          )}
+
+          {/* Show Backend & Database for 'backend' or 'fullstack' roles */}
+          {(values.role === 'backend' || values.role === 'fullstack') && (
+            <>
+              <TechRadioGroup
+                label="Preferred Backend Tech" name="preferredBackend"
+                options={["Node.js", "Python", "Go", "Other"]} otherFieldName="preferredBackendOther"
+                selectedValue={values.preferredBackend} error={errors.preferredBackend} touched={touched.preferredBackend}
+              />
+              <TechRadioGroup
+                label="Preferred Database" name="preferredDatabase"
+                options={["MongoDB", "PostgreSQL", "CosmosDB", "Other"]} otherFieldName="preferredDatabaseOther"
+                selectedValue={values.preferredDatabase} error={errors.preferredDatabase} touched={touched.preferredDatabase}
+              />
+            </>
+          )}
+
+          {/* File upload (always visible) */}
           <div>
-            <label className="font-semibold">Preferred Backend Tech:</label>
-            <div className="flex flex-wrap gap-4 mt-1">
-              {techOptions.backend.map((tech) => (
-                <label key={tech} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="preferredBackend"
-                    value={tech}
-                    checked={values.preferredBackend === tech}
-                    onChange={handleChange}
-                  />
-                  <span>{tech}</span>
-                </label>
-              ))}
-            </div>
-            {errors.preferredBackend && touched.preferredBackend && (
-              <div className="text-red-500">{errors.preferredBackend}</div>
-            )}
+            <label className="font-semibold text-gray-800">Upload Resume/Portfolio (PDF only):</label>
+            <input type="file" name="file" ref={fileInputRef} accept=".pdf"
+                onChange={(event) => { if (event.currentTarget.files) { setFieldValue("file", event.currentTarget.files[0]); } }}
+                className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
           </div>
 
-          <div>
-            <label className="font-semibold">Preferred Database:</label>
-            <div className="flex flex-wrap gap-4 mt-1">
-              {techOptions.database.map((tech) => (
-                <label key={tech} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="preferredDatabase"
-                    value={tech}
-                    checked={values.preferredDatabase === tech}
-                    onChange={handleChange}
-                  />
-                  <span>{tech}</span>
-                </label>
-              ))}
-            </div>
-            {errors.preferredDatabase && touched.preferredDatabase && (
-              <div className="text-red-500">{errors.preferredDatabase}</div>
-            )}
-          </div>
-
-          <div>
-            <label className="font-semibold">Preferred Hosting:</label>
-            <div className="flex flex-wrap gap-4 mt-1">
-              {techOptions.hosting.map((tech) => (
-                <label key={tech} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="preferredHosting"
-                    value={tech}
-                    checked={values.preferredHosting === tech}
-                    onChange={handleChange}
-                  />
-                  <span>{tech}</span>
-                </label>
-              ))}
-            </div>
-            {errors.preferredHosting && touched.preferredHosting && (
-              <div className="text-red-500">{errors.preferredHosting}</div>
-            )}
-          </div>
-
-          {/* File upload */}
-          <input
-            type="file"
-            name="file"
-            ref={fileInputRef}
-            accept=".pdf"
-            onChange={(event) => {
-              if (event.currentTarget.files && event.currentTarget.files[0]) {
-                setFieldValue("file", event.currentTarget.files[0]);
-              }
-            }}
-            className="p-2 border border-gray-300 rounded"
-          />
-
-          <button
-            type="submit"
-            className="bg-blue-500 text-white p-2 rounded"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Submitting..." : "Submit"}
+          <button type="submit" className="bg-blue-600 text-white font-bold p-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit Survey"}
           </button>
         </form>
       )}

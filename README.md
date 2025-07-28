@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -69,10 +67,3 @@ export default tseslint.config([
   },
 ])
 ```
-=======
-# tech-survey-web-dev
-For Tech Stack Survey &amp; Admin Panel Web Application
->>>>>>> 86367cea80b7cb01ace336017dd8b632a06635d6
-=======
-# frontend-PSF
->>>>>>> 687520096453ac28699876fdf8562bfb01a45e4b

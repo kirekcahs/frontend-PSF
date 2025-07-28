@@ -1,16 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../assets/lib/authSlice';
-import adminReducer from '../assets/lib/adminSlice';
 import surveyReducer from '../assets/lib/surveySlice';
 
-const store = configureStore({
+
+export const store = configureStore({ 
   reducer: {
-    auth: authReducer,
-    admin: adminReducer,
-    survey: surveyReducer,
+    auth: authReducer, // Authentication state management
+    survey: surveyReducer, // Survey state management
   },
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-export default store;
